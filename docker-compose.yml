@@ -14,6 +14,10 @@ services:
       ES_JAVA_OPTS: -Xms256m -Xmx256m
       xpack.security.enabled: "false"
       discovery.type: single-node
+    command: >
+      /bin/sh -c "./bin/elasticsearch-plugin list | grep -q ingest-attachment 
+      || yes | ./bin/elasticsearch-plugin install --silent ingest-attachment; 
+      /usr/local/bin/docker-entrypoint.sh eswrapper"
     ulimits:
       memlock:
         soft: -1
