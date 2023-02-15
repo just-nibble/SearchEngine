@@ -7,17 +7,9 @@ RUN apk add --no-cache --virtual .build-deps \
     git \
     musl-dev
 
-RUN mkdir build
-COPY . /build
-WORKDIR /build
-
-RUN go get
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o webserver .
-RUN adduser -S -D -H -h /build webserver
-USER webserver
-
-FROM scratch
-COPY --from=builder /build/webserver /app/
+COPY . /app
 WORKDIR /app
+
 EXPOSE 5000
-CMD ["./webserver"]
+
+# CMD ["go", "run", "./app/cmd/web"]
