@@ -4,28 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/just-nibble/SearchEngine/pkg/pdf"
 )
 
-type Entry struct {
-	ID    string
-	Title string
-	Body  string
-	Meta  string
-}
-
-func NewEntry(id string, title string, body string, meta string) *Entry {
-	entry := &Entry{
-		ID:    id,
-		Title: title,
-		Body:  body,
-		Meta:  meta,
-	}
-	return entry
-}
-
-func Bootstrap(es *elasticsearch.Client, entries []*Entry) error {
+func Bootstrap(es *elasticsearch.Client, entries []*pdf.Entry) error {
 	idx := "books"
 	ctx := context.Background()
 	_, err := esapi.IndicesDeleteRequest{Index: []string{idx}}.Do(ctx, es)
