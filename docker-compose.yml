@@ -6,6 +6,8 @@ services:
     build: .
     ports:
       - "5000:5000"
+    # networks: s2l_network
+    # depends_on: es01
 
   es01:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.0.0
@@ -14,6 +16,8 @@ services:
       ES_JAVA_OPTS: -Xms256m -Xmx256m
       xpack.security.enabled: "false"
       discovery.type: single-node
+      # networks: s2l_network
+
     command: >
       /bin/sh -c "./bin/elasticsearch-plugin list | grep -q ingest-attachment 
       || yes | ./bin/elasticsearch-plugin install --silent ingest-attachment; 
@@ -22,3 +26,5 @@ services:
       memlock:
         soft: -1
         hard: -1
+
+# networks: s2l_network

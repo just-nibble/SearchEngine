@@ -1,15 +1,16 @@
-FROM golang:1.12-alpine as builder
+FROM debian:bullseye-slim
 
 # To fix go get and build with cgo
-RUN apk add --no-cache --virtual .build-deps \
-    bash \
-    gcc \
-    git \
-    musl-dev
+# RUN apk add --no-cache --virtual .build-deps \
+#     bash \
+#     gcc \
+#     git \
+#     musl-dev
 
-COPY . /app
-WORKDIR /app
+ENV GO111MODULE=on
 
-EXPOSE 5000
+ADD . /app/bin
+WORKDIR /app/bin
 
-# CMD ["go", "run", "./app/cmd/web"]
+
+CMD ["./bin/web"]

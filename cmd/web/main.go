@@ -21,7 +21,7 @@ var (
 
 func main() {
 	flag.StringVar(&listenAddr, "listen-addr", ":5000", "server listen address")
-	flag.StringVar(&esAddresses, "es-addresses", "http://es01:9200,http://es02:9200", "elasticsearch addresses")
+	flag.StringVar(&esAddresses, "es-addresses", "http://es01:9200", "elasticsearch addresses")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "http: ", log.LstdFlags)
