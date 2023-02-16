@@ -3,10 +3,8 @@ package pdf
 import (
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
-
-	"github.com/unidoc/unipdf/v3/extractor"
-	"github.com/unidoc/unipdf/v3/model"
 )
 
 type Entry struct {
@@ -37,35 +35,18 @@ func ExtractText(dir string) ([]*Entry, error) {
 		ext := filepath.Ext(f.Name())
 		// if extension relevant
 		if ext == ".pdf" {
-			// then open file
-			f, err := os.Open(f.Name())
+			var full_name string = dir + "/" + f.Name()
+			outp := "bin/static/store/" + f.Name() + ".txt"
+			_, err := exec.Command("pdftotext", full_name, outp).Output()
 			if err != nil {
 				panic(err)
 			}
-			defer f.Close()
 
-			reader, err := model.NewPdfReaderLazy(f)
+			out, err := os.ReadFile(outp)
 			if err != nil {
 				panic(err)
 			}
-			// Read page
-			p, err := reader.GetPage(1)
-			if err != nil {
-				panic(err)
-			}
-			// create extractor for page
-			ex, err := extractor.New(p)
-			if err != nil {
-				panic(err)
-			}
-			// read text using extractor
-			text, err := ex.ExtractText()
-			output = append(
-				output, NewEntry(f.Name(), text),
-			)
-			if err != nil {
-				return nil, err
-			}
+			output = append(output, NewEntry(f.Name(), string(out)))
 		}
 	}
 	return output, nil

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/elastic/go-elasticsearch/v7"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,6 +11,10 @@ import (
 	"os/signal"
 	"strings"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v7"
+	ESCustom "github.com/just-nibble/SearchEngine/pkg/elasticsearch"
+	"github.com/just-nibble/SearchEngine/pkg/pdf"
 )
 
 var (
@@ -34,6 +38,8 @@ func main() {
 
 	server := newWebserver(logger, es)
 	go gracefullShutdown(server, logger, quit, done)
+
+	go indexDirectory("./bin/static", es)
 
 	logger.Println("Server is ready to handle requests at", listenAddr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -70,6 +76,33 @@ func newEsClient(logger *log.Logger, addresses []string) *elasticsearch.Client {
 	return client
 }
 
+const searchMatch = `
+	"query": {
+		"multi_match": {
+      		"query": %q,
+      		"fields": ["title^100", "body^10",],
+      		"operator": "and"
+    	}
+  	},
+  	"highlight": {
+    	"fields": {
+      		"body": { "number_of_fragments": 0 },
+      		"title": { "number_of_fragments": 0 }
+    	}
+  	},
+  	"size": 25,
+  	"sort": [{ "_score": "desc" }, { "_doc": "asc" }]`
+
+func buildQuery(query string) io.Reader {
+	var b strings.Builder
+
+	b.WriteString("{\n")
+	b.WriteString(fmt.Sprintf(searchMatch, query))
+	b.WriteString("\n}")
+
+	return strings.NewReader(b.String())
+}
+
 func newWebserver(logger *log.Logger, es *elasticsearch.Client) *http.Server {
 	router := http.NewServeMux()
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +124,33 @@ func newWebserver(logger *log.Logger, es *elasticsearch.Client) *http.Server {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	router.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		logger.Println(r.Method, r.URL.Path, r.RemoteAddr, r.UserAgent())
+		fmt.Println("query: ............................")
+		q := r.URL.Query().Get("q")
+		fmt.Println("query: +++++++++++++++++++++++++++++")
+		fmt.Println("query: ", q)
+		read, write := io.Pipe()
+
+		go func() {
+			defer write.Close()
+			res, err := es.Search(
+				es.Search.WithContext(r.Context()),
+				es.Search.WithIndex("books"),
+				es.Search.WithBody(buildQuery(q)),
+				es.Search.WithTrackTotalHits(true),
+			)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			} else {
+				defer res.Body.Close()
+				logger.Panicln("Got here...")
+				io.Copy(write, res.Body)
+			}
+		}()
+		io.Copy(w, read)
+	})
+
 	return &http.Server{
 		Addr:         listenAddr,
 		Handler:      router,
@@ -98,5 +158,19 @@ func newWebserver(logger *log.Logger, es *elasticsearch.Client) *http.Server {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  15 * time.Second,
+	}
+}
+
+func indexDirectory(dir string, es *elasticsearch.Client) {
+	// Read PDF
+	pdf_texts, err := pdf.ExtractText(dir)
+
+	if err != nil {
+		panic(err)
+	}
+	// Send content to elasticsearch for indexing
+	err = ESCustom.Bootstrap(es, pdf_texts)
+	if err != nil {
+		panic(err)
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"os/exec"
+
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/just-nibble/SearchEngine/pkg/pdf"
@@ -28,9 +30,13 @@ func Bootstrap(es *elasticsearch.Client, entries []*pdf.Entry) error {
 			return err
 		}
 
+		newUUID, err := exec.Command("uuidgen").Output()
+		if err != nil {
+			return err
+		}
 		_, err3 := esapi.CreateRequest{
 			Index:      idx,
-			DocumentID: e.ID,
+			DocumentID: string(newUUID),
 			Body:       bytes.NewReader(payload),
 		}.Do(ctx, es)
 		if err != nil {
